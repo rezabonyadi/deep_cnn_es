@@ -76,7 +76,7 @@ class DeepCnnEs:
     def fit(self, X, y):
         es = ES(self.number_of_variables * [0], 1)
         es.optimize(self.objective_, iterations=self.iterations,
-                    args=(X, y), verb_disp=0)
+                    args=(X, y), verb_disp=1)
 
         pass
 
