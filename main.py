@@ -73,6 +73,7 @@ from sklearn.svm import LinearSVC
 
 kk=DeepCnnEs.DeepCnnEs(model, LinearSVC())
 # kk.set_weights_(model, w)
+kk.fit(x_test, y_test.argmax(axis=1))
 
 ll = kk.objective_(w, x_test, y_test.argmax(axis=1))
 

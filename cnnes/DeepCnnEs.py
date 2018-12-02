@@ -1,6 +1,7 @@
 import numpy as np
 from keras.models import Sequential
 from sklearn import metrics
+from EvolutionaryAlgorithms.ES import ES
 
 class DeepCnnEs:
     def __init__(self, deep_model: Sequential, classifier, is_classification=True, iterations=1000, batch_size=128):
@@ -15,9 +16,21 @@ class DeepCnnEs:
 
         self.deep_model = deep_model
         self.classifier = classifier
-        self.is_classification = self
+        self.is_classification = is_classification
         self.iterations = iterations
         self.batch_size = batch_size
+        self.set_shape_size_()
+
+    def set_shape_size_(self):
+        self.weights_shape = list()
+        self.number_of_variables = 0
+
+        weights = self.deep_model.get_weights()
+        for weight in weights:
+            shape = weight.shape
+            self.weights_shape.append(shape)
+            self.number_of_variables = self.number_of_variables + np.prod(shape)
+
 
     def objective_(self, w: np.ndarray, X: np.ndarray, y: np.ndarray):
         '''
@@ -50,11 +63,10 @@ class DeepCnnEs:
         '''
 
         w_index = 0
-        weights = self.deep_model.get_weights()
+        # weights = self.deep_model.get_weights()
         prepared_weights = list()
 
-        for weight in weights:
-            shape = weight.shape
+        for shape in self.weights_shape:
             size = np.prod(shape)
             prepared_weights.append(np.reshape(w[w_index: size+w_index], shape))
             w_index = w_index + size
@@ -62,6 +74,10 @@ class DeepCnnEs:
         self.deep_model.set_weights(prepared_weights)
 
     def fit(self, X, y):
+        es = ES(self.number_of_variables * [0], 1)
+        es.optimize(self.objective_, iterations=self.iterations,
+                    args=(X, y), verb_disp=0)
+
         pass
 
     def predict(self, X):
