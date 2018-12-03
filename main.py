@@ -1,15 +1,20 @@
-from __future__ import print_function
+# from __future__ import print_function
+
 import keras
 from keras.datasets import mnist
 from keras.models import Sequential
 from keras.layers import Dense, Dropout, Flatten
 from keras.layers import Conv2D, MaxPooling2D
 from keras import backend as K
+from cnnes import DeepCnnEs
+from sklearn import metrics
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.ensemble import GradientBoostingClassifier
+from sklearn.svm import LinearSVC
 
 batch_size = 128
 num_classes = 10
-epochs = 12
-
+epochs = 20
 
 # input image dimensions
 img_rows, img_cols = 28, 28
@@ -38,6 +43,10 @@ print(x_test.shape[0], 'test samples')
 y_train = keras.utils.to_categorical(y_train, num_classes)
 y_test = keras.utils.to_categorical(y_test, num_classes)
 
+# x_train = x_train[0:5000,:,:,:]
+# y_train = y_train[0:5000,:]
+
+
 model = Sequential()
 model.add(Conv2D(5, kernel_size=(3, 3),
                  activation='relu',
@@ -46,7 +55,7 @@ model.add(Conv2D(10, (4, 3), activation='relu'))
 model.add(MaxPooling2D(pool_size=(2, 2)))
 model.add(Dropout(0.25))
 model.add(Flatten())
-model.add(Dense(num_classes, activation='softmax'))
+# model.add(Dense(num_classes, activation='softmax'))
 
 model.compile(loss=keras.losses.categorical_crossentropy,
               optimizer=keras.optimizers.Adadelta(),
@@ -57,37 +66,31 @@ model.compile(loss=keras.losses.categorical_crossentropy,
 #           epochs=1,
 #           verbose=1,
 #           validation_data=(x_test, y_test))
+#
+#
+kk=DeepCnnEs.DeepCnnEs(model, LinearSVC(), iterations=epochs, L1=0.5)
+# kk=DeepCnnEs.DeepCnnEs(model, GradientBoostingClassifier(), iterations=epochs)
+# kk=DeepCnnEs.DeepCnnEs(model, RandomForestClassifier(), iterations=epochs)
+
+kk.fit(x_train, y_train.argmax(axis=1))
+
+cnnes_res = kk.predict(x_test)
+cnn_es_test_score = metrics.accuracy_score(y_test.argmax(axis=1), cnnes_res)
+cnnes_res = kk.predict(x_train)
+cnn_es_train_score = metrics.accuracy_score(y_train.argmax(axis=1), cnnes_res)
 
 
-y_h = model.predict(x_test)
+model.add(Dense(num_classes, activation='softmax'))
+model.compile(loss=keras.losses.categorical_crossentropy,
+              optimizer=keras.optimizers.Adadelta(),
+              metrics=['accuracy'])
+model.fit(x_train, y_train, batch_size=batch_size, epochs=epochs, verbose=1)
 
-import numpy as np
-weights = model.get_weights()
-size = 0
-for weight in weights:
-    shape = weight.shape
-    size = size+np.prod(shape)
+cnn_res = model.predict(x_test).argmax(axis=1)
+cnn_test_score = metrics.accuracy_score(y_test.argmax(axis=1), cnn_res)
+cnn_res = model.predict(x_train).argmax(axis=1)
+cnn_traint_score = metrics.accuracy_score(y_train.argmax(axis=1), cnn_res)
 
-w=np.random.rand((size))
-from cnnes import DeepCnnEs
-from sklearn.svm import LinearSVC
-
-kk=DeepCnnEs.DeepCnnEs(model, LinearSVC())
-# kk.set_weights_(model, w)
-kk.fit(x_test, y_test.argmax(axis=1))
-
-ll = kk.objective_(w, x_test, y_test.argmax(axis=1))
-
-ss = model.get_weights()[:]
-kk = ss[0][:]
-for layer in model.layers:
-    weights = layer.get_weights()  # list of numpy arrays
-
-model.fit(x_train, y_train,
-          batch_size=batch_size,
-          epochs=epochs,
-          verbose=1,
-          validation_data=(x_test, y_test))
 score = model.evaluate(x_test, y_test, verbose=0)
 print('Test loss:', score[0])
 print('Test accuracy:', score[1])

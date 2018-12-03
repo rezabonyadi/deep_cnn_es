@@ -4,7 +4,8 @@ from sklearn import metrics
 from EvolutionaryAlgorithms.ES import ES
 
 class DeepCnnEs:
-    def __init__(self, deep_model: Sequential, classifier, is_classification=True, iterations=1000, batch_size=128):
+    def __init__(self, deep_model: Sequential, classifier, is_classification=True,
+                 iterations=1000, batch_size=128, L0 = 0.0, L1 = 0.0, L2 = 0.0):
         '''
         Initializes the deep model, the classifier/regression method, and maximum number of iterations.
 
@@ -19,6 +20,10 @@ class DeepCnnEs:
         self.is_classification = is_classification
         self.iterations = iterations
         self.batch_size = batch_size
+        self.best_solution = None
+        self.L0 = L0
+        self.L1 = L1
+        self.L2 = L2
         self.set_shape_size_()
 
     def set_shape_size_(self):
@@ -31,7 +36,6 @@ class DeepCnnEs:
             self.weights_shape.append(shape)
             self.number_of_variables = self.number_of_variables + np.prod(shape)
 
-
     def objective_(self, w: np.ndarray, X: np.ndarray, y: np.ndarray):
         '''
         This the objective to the evolutionary method.
@@ -42,15 +46,30 @@ class DeepCnnEs:
 
         :return: A fitness values.
         '''
+        perm = np.random.permutation(X.shape[0])
 
+        yp = y[perm[0:self.batch_size]]
+        Xp = X[perm[0:self.batch_size],:,:,:]
         self.update_deep_model_(w)
-        X_transformed = self.deep_model.predict(X)
-        self.classifier.fit(X_transformed, y)
+        X_transformed = self.deep_model.predict(Xp)
+        self.classifier.fit(X_transformed, yp)
         y_hat = self.classifier.predict(X_transformed)
+
         if(self.is_classification):
-            return 1.0-metrics.accuracy_score(y, y_hat)
+            return 1.0-metrics.accuracy_score(yp, y_hat) + self.get_regularization(w)
         else: # Regression
-            return metrics.mean_squared_error(y, y_hat)
+            return metrics.mean_squared_error(yp, y_hat) + self.get_regularization(w)
+
+    def get_regularization(self, w: np.ndarray):
+        penalty = 0
+        if self.L0 > 0:
+            penalty = self.L0 * np.count_nonzero(w) / w.size
+        if self.L1 > 0:
+            penalty = penalty + self.L1 * np.sum(np.abs(w)) / w.size
+        if self.L2 > 0:
+            penalty = penalty + self.L2 * np.sum(np.dot(w, w.T)) / w.size
+
+        return penalty
 
     def update_deep_model_(self, w: np.ndarray):
         '''
@@ -78,10 +97,19 @@ class DeepCnnEs:
         es.optimize(self.objective_, iterations=self.iterations,
                     args=(X, y), verb_disp=1)
 
-        pass
+        # Update the deep model
+        res = es.result()
+        self.best_solution = res
+        self.update_deep_model_(res[0])
+
+        # Update the classifier
+        X_transformed = self.deep_model.predict(X)
+        self.classifier.fit(X_transformed, y)
 
     def predict(self, X):
-        pass
+        X_transformed = self.deep_model.predict(X)
+        y_hat = self.classifier.predict(X_transformed)
+        return y_hat
 
     def set_model(self, model):
         self.model = model

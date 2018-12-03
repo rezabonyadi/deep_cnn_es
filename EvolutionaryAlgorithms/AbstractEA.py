@@ -78,6 +78,6 @@ class AbstractEA(object):
             self.disp(1)
             print('termination by', self.stop())
             print('best f-value =', self.result()[1])
-            print('solution =', self.result()[0])
+            # print('solution =', self.result()[0])
 
         return self
