@@ -1,5 +1,6 @@
 # from __future__ import print_function
 
+
 import keras
 from keras.datasets import mnist
 from keras.models import Sequential
@@ -11,10 +12,17 @@ from sklearn import metrics
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.ensemble import GradientBoostingClassifier
 from sklearn.svm import LinearSVC
+from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
+from sklearn.linear_model import SGDClassifier
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.gaussian_process import GaussianProcessClassifier
+from sklearn.tree import DecisionTreeClassifier
 
-batch_size = 128
+
+
+batch_size = 500
 num_classes = 10
-epochs = 20
+epochs = 100
 
 # input image dimensions
 img_rows, img_cols = 28, 28
@@ -43,23 +51,45 @@ print(x_test.shape[0], 'test samples')
 y_train = keras.utils.to_categorical(y_train, num_classes)
 y_test = keras.utils.to_categorical(y_test, num_classes)
 
-# x_train = x_train[0:5000,:,:,:]
-# y_train = y_train[0:5000,:]
+x_train = x_train[0:1000,:,:,:]
+y_train = y_train[0:1000,:]
 
 
-model = Sequential()
-model.add(Conv2D(5, kernel_size=(3, 3),
-                 activation='relu',
-                 input_shape=input_shape))
-model.add(Conv2D(10, (4, 3), activation='relu'))
-model.add(MaxPooling2D(pool_size=(2, 2)))
-model.add(Dropout(0.25))
-model.add(Flatten())
-# model.add(Dense(num_classes, activation='softmax'))
+# Base deep model builder
+def get_deep_model(with_classifier=False):
+    model = Sequential()
+    model.add(Conv2D(4, kernel_size=(3, 3),
+                     activation='relu',
+                     input_shape=input_shape))
+    model.add(Conv2D(4, (3, 3), activation='relu'))
+    model.add(MaxPooling2D(pool_size=(2, 2)))
+    model.add(Flatten())
+    if with_classifier:
+        model.add(Dense(num_classes, activation='softmax'))
 
-model.compile(loss=keras.losses.categorical_crossentropy,
-              optimizer=keras.optimizers.Adadelta(),
-              metrics=['accuracy'])
+    model.compile(loss=keras.losses.categorical_crossentropy,
+                  optimizer=keras.optimizers.Adadelta(),
+                  metrics=['accuracy'])
+    return model
+
+
+# def get_deep_model(with_classifier=False):
+#
+#     model = Sequential()
+#     model.add(Conv2D(3, kernel_size=(3, 3),
+#                      activation='relu',
+#                      input_shape=input_shape))
+#     model.add(Conv2D(2, (3, 3), activation='relu'))
+#     model.add(MaxPooling2D(pool_size=(2, 2)))
+#     model.add(Dropout(0.25))
+#     model.add(Flatten())
+#     if with_classifier:
+#         model.add(Dense(num_classes, activation='softmax'))
+#
+#     model.compile(loss=keras.losses.categorical_crossentropy,
+#                   optimizer=keras.optimizers.Adadelta(),
+#                   metrics=['accuracy'])
+#     return model
 
 # model.fit(x_train, y_train,
 #           batch_size=batch_size,
@@ -68,9 +98,21 @@ model.compile(loss=keras.losses.categorical_crossentropy,
 #           validation_data=(x_test, y_test))
 #
 #
-kk=DeepCnnEs.DeepCnnEs(model, LinearSVC(), iterations=epochs, L1=0.5)
-# kk=DeepCnnEs.DeepCnnEs(model, GradientBoostingClassifier(), iterations=epochs)
-# kk=DeepCnnEs.DeepCnnEs(model, RandomForestClassifier(), iterations=epochs)
+
+batch_size = 500
+num_classes = 10
+epochs = 100
+
+
+es_deep_model = get_deep_model()
+kk=DeepCnnEs.DeepCnnEs(es_deep_model, LinearSVC(), iterations=epochs, batch_size=batch_size, L1=0.01)
+# kk=DeepCnnEs.DeepCnnEs(es_deep_model, LinearDiscriminantAnalysis(solver='svd'), iterations=epochs, batch_size=batch_size)
+# kk=DeepCnnEs.DeepCnnEs(es_deep_model, KNeighborsClassifier(n_neighbors=5), iterations=epochs, batch_size=batch_size, L1=0.01)
+# kk=DeepCnnEs.DeepCnnEs(es_deep_model, GaussianProcessClassifier(), iterations=epochs)
+# kk=DeepCnnEs.DeepCnnEs(es_deep_model, DecisionTreeClassifier(random_state=0), iterations=epochs, L1=0.01, batch_size=batch_size)
+# kk=DeepCnnEs.DeepCnnEs(es_deep_model, SGDClassifier(shuffle=True, penalty='l2'), iterations=epochs)
+# kk=DeepCnnEs.DeepCnnEs(es_deep_model, GradientBoostingClassifier(), iterations=epochs)
+# kk=DeepCnnEs.DeepCnnEs(es_deep_model, RandomForestClassifier(), iterations=epochs, L0=0.5)
 
 kk.fit(x_train, y_train.argmax(axis=1))
 
@@ -80,17 +122,18 @@ cnnes_res = kk.predict(x_train)
 cnn_es_train_score = metrics.accuracy_score(y_train.argmax(axis=1), cnnes_res)
 
 
-model.add(Dense(num_classes, activation='softmax'))
-model.compile(loss=keras.losses.categorical_crossentropy,
-              optimizer=keras.optimizers.Adadelta(),
-              metrics=['accuracy'])
-model.fit(x_train, y_train, batch_size=batch_size, epochs=epochs, verbose=1)
+batch_size = 500
+epochs = 500
 
-cnn_res = model.predict(x_test).argmax(axis=1)
+cnn_model = get_deep_model(True)
+cnn_model.fit(x_train, y_train, batch_size=batch_size, epochs=epochs, verbose=1)
+
+
+cnn_res = cnn_model.predict(x_test).argmax(axis=1)
 cnn_test_score = metrics.accuracy_score(y_test.argmax(axis=1), cnn_res)
-cnn_res = model.predict(x_train).argmax(axis=1)
+cnn_res = cnn_model.predict(x_train).argmax(axis=1)
 cnn_traint_score = metrics.accuracy_score(y_train.argmax(axis=1), cnn_res)
 
-score = model.evaluate(x_test, y_test, verbose=0)
+score = cnn_model.evaluate(x_test, y_test, verbose=0)
 print('Test loss:', score[0])
 print('Test accuracy:', score[1])

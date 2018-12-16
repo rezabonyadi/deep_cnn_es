@@ -117,8 +117,8 @@ class CMAES(AbstractEA):
 
         arz = np.random.standard_normal((self.lam, self.dim))
         arz = self.xmean + self.sigma * np.dot(arz, np.transpose(self.B))
-        arz = arz.T / np.sqrt(np.einsum('...i,...i', arz, arz))
-        res = arz.T
+        # arz = (arz.T / np.sqrt(np.einsum('...i,...i', arz, arz))).T
+        res = arz
 
         return res
 

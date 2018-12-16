@@ -2,6 +2,8 @@ import numpy as np
 from keras.models import Sequential
 from sklearn import metrics
 from EvolutionaryAlgorithms.ES import ES
+from EvolutionaryAlgorithms.CMAES import CMAES
+from sklearn.model_selection import train_test_split
 
 class DeepCnnEs:
     def __init__(self, deep_model: Sequential, classifier, is_classification=True,
@@ -46,19 +48,37 @@ class DeepCnnEs:
 
         :return: A fitness values.
         '''
-        perm = np.random.permutation(X.shape[0])
+        Xp, yp = self.get_batch_(X, y)
 
-        yp = y[perm[0:self.batch_size]]
-        Xp = X[perm[0:self.batch_size],:,:,:]
         self.update_deep_model_(w)
         X_transformed = self.deep_model.predict(Xp)
         self.classifier.fit(X_transformed, yp)
+
+        yp = y
+        X_transformed = self.deep_model.predict(X)
+
         y_hat = self.classifier.predict(X_transformed)
+        reg = self.get_regularization(w)
 
         if(self.is_classification):
-            return 1.0-metrics.accuracy_score(yp, y_hat) + self.get_regularization(w)
+            score = 1.0 - metrics.accuracy_score(yp, y_hat)
         else: # Regression
-            return metrics.mean_squared_error(yp, y_hat) + self.get_regularization(w)
+            score = metrics.mean_squared_error(yp, y_hat)
+        # print(score)
+        return score + reg
+
+
+    def get_batch_(self, X, y):
+        perm = np.random.permutation(X.shape[0])
+        if self.is_classification:
+            s = X.shape[0]
+            p = self.batch_size/s
+            Xp, _, yp, _ = train_test_split(X, y, test_size=1.0-p, shuffle=True, stratify=y)
+        else:
+            yp = y[perm[0:self.batch_size]]
+            Xp = X[perm[0:self.batch_size], :, :, :]
+        # print(np.unique(yp).size)
+        return Xp, yp
 
     def get_regularization(self, w: np.ndarray):
         penalty = 0
@@ -93,7 +113,9 @@ class DeepCnnEs:
         self.deep_model.set_weights(prepared_weights)
 
     def fit(self, X, y):
+        # es = CMAES(self.number_of_variables * [0], 1)
         es = ES(self.number_of_variables * [0], 1)
+
         es.optimize(self.objective_, iterations=self.iterations,
                     args=(X, y), verb_disp=1)
 
