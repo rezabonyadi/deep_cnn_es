@@ -7,7 +7,7 @@ from sklearn.model_selection import train_test_split
 
 class DeepCnnEs:
     def __init__(self, deep_model: Sequential, classifier, is_classification=True,
-                 iterations=1000, batch_size=128, L0 = 0.0, L1 = 0.0, L2 = 0.0):
+                 iterations=1000, popsize="4 + int(3 * log(N))", batch_size=128, L0 = 0.0, L1 = 0.0, L2 = 0.0):
         '''
         Initializes the deep model, the classifier/regression method, and maximum number of iterations.
 
@@ -26,6 +26,7 @@ class DeepCnnEs:
         self.L0 = L0
         self.L1 = L1
         self.L2 = L2
+        self.popsize = popsize
         self.set_shape_size_()
 
     def set_shape_size_(self):
@@ -50,7 +51,7 @@ class DeepCnnEs:
         '''
         Xp, yp = self.get_batch_(X, y)
 
-        self.update_deep_model_(w)
+        self.update_deep_model_weights_(w)
         X_transformed = self.deep_model.predict(Xp)
         self.classifier.fit(X_transformed, yp)
 
@@ -91,7 +92,7 @@ class DeepCnnEs:
 
         return penalty
 
-    def update_deep_model_(self, w: np.ndarray):
+    def update_deep_model_weights_(self, w: np.ndarray):
         '''
         The method gets a deep model, set w for its weights, and returns the modified model.
 
@@ -112,9 +113,18 @@ class DeepCnnEs:
 
         self.deep_model.set_weights(prepared_weights)
 
+    def get_model_weights_flatten_(self):
+
+        weights = self.deep_model.get_weights()
+        flatten_weights = list()
+        for weight in weights:
+            flatten_weights.extend(np.reshape(weight, (1, weight.size)).tolist()[0])
+
+        return flatten_weights
+
     def fit(self, X, y):
-        # es = CMAES(self.number_of_variables * [0], 1)
-        es = ES(self.number_of_variables * [0], 1)
+        es = CMAES(self.number_of_variables * [0], .5, popsize=self.popsize)
+        # es = ES(self.number_of_variables * [0], 1)
 
         es.optimize(self.objective_, iterations=self.iterations,
                     args=(X, y), verb_disp=1)
@@ -122,7 +132,7 @@ class DeepCnnEs:
         # Update the deep model
         res = es.result()
         self.best_solution = res
-        self.update_deep_model_(res[0])
+        self.update_deep_model_weights_(res[0])
 
         # Update the classifier
         X_transformed = self.deep_model.predict(X)
@@ -138,5 +148,8 @@ class DeepCnnEs:
 
     def set_classifier(self, classifier):
         self.classifier = classifier
+
+
+
 
 

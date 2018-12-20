@@ -7,7 +7,8 @@ from keras.models import Sequential
 from keras.layers import Dense, Dropout, Flatten
 from keras.layers import Conv2D, MaxPooling2D
 from keras import backend as K
-from cnnes import DeepCnnEs
+from cnnes import DeepCnnEs,DeepVisualizationHelper
+
 from sklearn import metrics
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.ensemble import GradientBoostingClassifier
@@ -65,6 +66,7 @@ def get_deep_model(with_classifier=False):
     model.add(MaxPooling2D(pool_size=(2, 2)))
     model.add(Flatten())
     if with_classifier:
+        # model.add(Dropout(0.25))
         model.add(Dense(num_classes, activation='softmax'))
 
     model.compile(loss=keras.losses.categorical_crossentropy,
@@ -72,32 +74,6 @@ def get_deep_model(with_classifier=False):
                   metrics=['accuracy'])
     return model
 
-
-# def get_deep_model(with_classifier=False):
-#
-#     model = Sequential()
-#     model.add(Conv2D(3, kernel_size=(3, 3),
-#                      activation='relu',
-#                      input_shape=input_shape))
-#     model.add(Conv2D(2, (3, 3), activation='relu'))
-#     model.add(MaxPooling2D(pool_size=(2, 2)))
-#     model.add(Dropout(0.25))
-#     model.add(Flatten())
-#     if with_classifier:
-#         model.add(Dense(num_classes, activation='softmax'))
-#
-#     model.compile(loss=keras.losses.categorical_crossentropy,
-#                   optimizer=keras.optimizers.Adadelta(),
-#                   metrics=['accuracy'])
-#     return model
-
-# model.fit(x_train, y_train,
-#           batch_size=batch_size,
-#           epochs=1,
-#           verbose=1,
-#           validation_data=(x_test, y_test))
-#
-#
 
 batch_size = 500
 num_classes = 10
@@ -113,7 +89,7 @@ kk=DeepCnnEs.DeepCnnEs(es_deep_model, LinearSVC(), iterations=epochs, batch_size
 # kk=DeepCnnEs.DeepCnnEs(es_deep_model, SGDClassifier(shuffle=True, penalty='l2'), iterations=epochs)
 # kk=DeepCnnEs.DeepCnnEs(es_deep_model, GradientBoostingClassifier(), iterations=epochs)
 # kk=DeepCnnEs.DeepCnnEs(es_deep_model, RandomForestClassifier(), iterations=epochs, L0=0.5)
-
+# kk.get_model_weights_()
 kk.fit(x_train, y_train.argmax(axis=1))
 
 cnnes_res = kk.predict(x_test)
@@ -121,8 +97,10 @@ cnn_es_test_score = metrics.accuracy_score(y_test.argmax(axis=1), cnnes_res)
 cnnes_res = kk.predict(x_train)
 cnn_es_train_score = metrics.accuracy_score(y_train.argmax(axis=1), cnnes_res)
 
+DeepVisualizationHelper.visualization(kk.deep_model, params=40, mode='hist')
 
-batch_size = 500
+
+batch_size = 128
 epochs = 500
 
 cnn_model = get_deep_model(True)
